@@ -1,41 +1,46 @@
-# Stari formati → MySQL
+# legacy-formats-to-mysql
 
-> **In English:** small Python tools that move old dBase/Clipper (`.dbf`) and Microsoft Access (`.mdb`, `.accdb`) databases into MySQL, and then prove with checksums that nothing was lost or changed. They are part of the case study [Modernizing POKSI without stopping it](https://github.com/Keks20/POKSIPP-Modernizacija/blob/main/CASE_STUDY.md). The guide below is in Serbian.
+Small Python tools that move old databases into MySQL, the kind real clients still bring:
+**dBase / Clipper / FoxPro (`.dbf`)** and **Microsoft Access (`.mdb`, `.accdb`)**.
+Each import has a matching checker that proves, with checksums, that nothing was lost or changed.
 
-Prebacivanje starih baza u MySQL, kakve donose pravi klijenti.
-Dva dela: **dBase / Clipper / FoxPro (`.dbf`)** i **Microsoft Access (`.mdb`, `.accdb`)**.
+They are part of the case study
+[Modernizing POKSI without stopping it](https://github.com/Keks20/poksipp-modernization/blob/main/CASE_STUDY.md).
+The tools work with any `.dbf` or Access file, not only with the samples in `podaci`.
 
-Alati rade za bilo koji `.dbf` ili Access fajl, ne samo za primere iz foldera `podaci`.
+*Srpska verzija uputstva: [README.sr.md](README.sr.md).*
 
-| Fajl | Šta radi |
+> The command-line options and the output are in Serbian. See [Serbian words in the tools](#serbian-words-in-the-tools) at the end.
+
+| File | What it does |
 | --- | --- |
-| `dbf_u_mysql.py` | uvoz jednog `.dbf` fajla u tabelu u MySQL-u (ili samo `--pregled`) |
-| `provera_dbf.py` | poredi `.dbf` i tabelu, kolonu po kolonu, sa kontrolnim sumama |
-| `dbf_zajednicko.py` | pravila pretvaranja koja koriste obe skripte |
-| `napravi_test_dbf.py` | pravi `podaci\magacin.dbf` (izmišljen, vidi dole) |
-| `access_u_mysql.py` | uvoz cele Access baze (sve tabele) u MySQL bazu istog imena |
-| `provera_access.py` | poredi Access i MySQL, tabelu po tabelu i kolonu po kolonu |
-| `access_zajednicko.py` | izbor drajvera, tipovi kolona, čitanje |
-| `kontrola.py` | kontrolne sume i veza sa MySQL-om, zajedničko za sve |
+| `dbf_u_mysql.py` | imports one `.dbf` file into a MySQL table (or only previews it with `--pregled`) |
+| `provera_dbf.py` | compares the `.dbf` file and the table, column by column, with checksums |
+| `dbf_zajednicko.py` | conversion rules shared by both scripts |
+| `napravi_test_dbf.py` | builds `podaci\magacin.dbf` (invented, see below) |
+| `access_u_mysql.py` | imports a whole Access database (all tables) into a MySQL database of the same name |
+| `provera_access.py` | compares Access and MySQL, table by table and column by column |
+| `access_zajednicko.py` | driver choice, column types, reading |
+| `kontrola.py` | checksums and the MySQL connection, shared by everything |
 
-## Podaci za vežbu (`.dbf`)
+## Sample data (`.dbf`)
 
-- **`podaci\test.dbf`**: klasičan Clipper uzorak (dBase III, 500 zaposlenih, poslednja izmena 1999). Preuzet iz javnog repozitorijuma [Harbour](https://github.com/harbour/core) (`tests/test.dbf`), slobodnog naslednika Clipper-a. Podaci su izmišljeni test podaci.
-- **`podaci\magacin.dbf` + `magacin.dbt`**: **izmišljen** srpski magacin iz 1995–2001. Napravila ga je skripta `napravi_test_dbf.py`, bajt po bajt, kao dBase III+ sa memo poljem. Namerno ima probleme kakve nose pravi stari fajlovi:
-  - DOS kodna strana 852 (YU latinica), a u zaglavlju nije upisana;
-  - 3 obrisana zapisa (u dBase-u `DELETE` bez `PACK`, pa su i dalje u fajlu);
-  - datum 30. 2. 1999, prazan datum, broj koji se nije uklopio u polje (`**********`), logičko polje `?` i prazna cena.
+- **`podaci\test.dbf`**: a classic Clipper sample (dBase III, 500 employees, last changed in 1999), taken from the public [Harbour](https://github.com/harbour/core) repository (`tests/test.dbf`), the free successor to Clipper. The data is invented test data.
+- **`podaci\magacin.dbf` + `magacin.dbt`**: an **invented** Serbian warehouse from 1995–2001. The script `napravi_test_dbf.py` writes it byte by byte as dBase III+ with a memo field. On purpose, it has the problems real old files have:
+  - DOS code page 852 (Serbian Latin), not recorded in the header;
+  - 3 deleted records (in dBase, `DELETE` without `PACK`, so they are still in the file);
+  - the date 30 February 1999, an empty date, a number too big for its field (`**********`), a logical field set to `?` and an empty price.
 
-## Pokretanje: `.dbf` (XAMPP)
+## Running: `.dbf` (XAMPP)
 
-1. U XAMPP-u pokreni **MySQL**.
-2. U ovom folderu, samo prvi put:
+1. Start **MySQL** in XAMPP.
+2. In this folder, the first time only:
 
    ```
    pip install -r requirements.txt
    ```
 
-3. Clipper uzorak: prvo pogledaj, pa uvezi, pa proveri:
+3. The Clipper sample: preview first, then import, then check:
 
    ```
    python dbf_u_mysql.py podaci\test.dbf --pregled
@@ -43,74 +48,74 @@ Alati rade za bilo koji `.dbf` ili Access fajl, ne samo za primere iz foldera `p
    python provera_dbf.py podaci\test.dbf
    ```
 
-4. Srpski magacin. Prvo **bez** kodne strane, da vidiš šta alat kaže:
+4. The Serbian warehouse. First **without** a code page, to see what the tool says:
 
    ```
    python dbf_u_mysql.py podaci\magacin.dbf --pregled
    ```
 
-   Ispisaće isti naziv u pet kodnih strana. Ispravno je samo u `cp852`. Onda:
+   It prints the same product name in five code pages. Only `cp852` is correct. Then:
 
    ```
    python dbf_u_mysql.py podaci\magacin.dbf --kodna-strana cp852
    python provera_dbf.py podaci\magacin.dbf --kodna-strana cp852
    ```
 
-5. Pogledaj bazu **`stari_formati`** u phpMyAdmin-u (`http://localhost/phpmyadmin`).
+5. Look at the **`stari_formati`** database in phpMyAdmin (`http://localhost/phpmyadmin`).
 
-Podrazumevano: `127.0.0.1:3306`, korisnik `root`, prazna lozinka, baza `stari_formati`.
-Drugačije: `--host`, `--port`, `--korisnik`, `--lozinka`, `--baza`, a ime tabele sa `--tabela`.
+Defaults: `127.0.0.1:3306`, user `root`, empty password, database `stari_formati`.
+To change them: `--host`, `--port`, `--korisnik`, `--lozinka`, `--baza`; the table name with `--tabela`.
 
-Ako tabela već postoji, uvoz ne radi ništa. Ponovni uvoz (stari sadržaj se briše) radi se sa `--prepisi`.
+If the table already exists, the import does nothing. To import again (the old content is deleted), add `--prepisi`.
 
-## Pravila pretvaranja (`.dbf`)
+## Conversion rules (`.dbf`)
 
-| U `.dbf`-u | U MySQL-u | Zašto |
+| In the `.dbf` | In MySQL | Why |
 | --- | --- | --- |
-| `C` tekst | `VARCHAR(dužina)`, razmaci na kraju se skidaju, prazno → `NULL` | dBase dopunjava tekst razmacima do dužine polja |
-| `N` / `F` bez decimala | `INT` (do 9 cifara) ili `BIGINT` | |
-| `N` / `F` sa decimalama | `DECIMAL(dužina, decimale)` | tačno kao u fajlu; `float` bi 12,1 pretvorio u 12,0999… |
-| `D` datum | `DATE`; prazan → `NULL` | |
-| `L` logičko | `TINYINT(1)`: T/Y → 1, F/N → 0, `?` → `NULL` | |
+| `C` text | `VARCHAR(length)`, trailing spaces removed, empty → `NULL` | dBase pads text with spaces to the field length |
+| `N` / `F` without decimals | `INT` (up to 9 digits) or `BIGINT` | |
+| `N` / `F` with decimals | `DECIMAL(length, decimals)` | exactly as in the file; a `float` would turn 12.1 into 12.0999… |
+| `D` date | `DATE`; empty → `NULL` | |
+| `L` logical | `TINYINT(1)`: T/Y → 1, F/N → 0, `?` → `NULL` | |
 | `M` memo (`.dbt`/`.fpt`) | `MEDIUMTEXT` | |
-| broj zapisa | kolona `_red` (primarni ključ) | čuva redosled iz fajla |
-| obrisan zapis (`*`) | uvozi se, kolona `_obrisan = 1` | obrisan zapis nije nestao; klijent odlučuje šta s njim |
+| record number | column `_red` (primary key) | keeps the order from the file |
+| deleted record (`*`) | imported, column `_obrisan = 1` | a deleted record is not gone; the client decides what to do with it |
 
-**Problemi.** Vrednost koja ne može da se pročita (nemoguć datum, `*****` u broju, slovo u broju) postaje `NULL`, ali se ne gubi bez traga. Uvoz je nabraja kao PROBLEM: red, polje, sirova vrednost i razlog. Taj spisak ide klijentu, da on kaže šta je trebalo da piše.
+**Problems.** A value that cannot be read (an impossible date, `*****` in a number, a letter in a number) becomes `NULL`, but it does not disappear without a trace. The import lists it as a PROBLEM: row, field, raw value and reason. That list goes to the client, who says what it should have been.
 
-Biblioteka `dbfread` sama bi `*****` tiho pretvorila u prazno, a na 30. februaru prekinula ceo uvoz. Zato `dbf_zajednicko.py` ima sopstveni parser.
+The `dbfread` library on its own would silently turn `*****` into an empty value and stop the whole import on 30 February. That is why `dbf_zajednicko.py` has its own parser.
 
-## Šta naučiti iz `.dbf` dela
+## What the `.dbf` part teaches
 
-- **Kodna strana se ne vidi u fajlu.** Pogrešna kodna strana ne javlja grešku. Sa `--kodna-strana cp1250` uvoz „uspe“, a umesto „Šećer“ u bazi piše „će†er“. Ni provera to ne hvata, jer obe strane čitaju istom pogrešnom kodnom stranom. Zato uvek prvo `--pregled`, pa očima proveriti naša slova.
-- **Provera hvata sve ostalo.** Promena cene od 1 pare ili „Šećer“ → „Secer“ u bazi daju `RAZL` u kontrolnoj sumi te kolone.
-- **Obrisano u dBase-u nije obrisano.** Dok se ne uradi `PACK`, zapis je u fajlu, samo označen zvezdicom.
+- **The code page is not in the file.** A wrong code page gives no error. With `--kodna-strana cp1250` the import "succeeds", and the database says "će†er" instead of "Šećer". Even the checker cannot catch it, because both sides read with the same wrong code page. So always preview first (`--pregled`) and check the local letters by eye.
+- **The checker catches everything else.** Changing a price by 0.01 or "Šećer" → "Secer" in the database gives `RAZL` for that column's checksum.
+- **Deleted in dBase is not deleted.** Until someone runs `PACK`, the record is still in the file, only marked with an asterisk.
 
 ## Access (`.mdb`, `.accdb`)
 
-### Podaci za vežbu (`podaci\access`)
+### Sample data (`podaci\access`)
 
-Iz javnog repozitorijuma [mdbtools/mdbtestdata](https://github.com/mdbtools/mdbtestdata):
+From the public [mdbtools/mdbtestdata](https://github.com/mdbtools/mdbtestdata) repository:
 
-- **`nwind.mdb`**: Microsoftov Northwind u formatu **Access 97** (Jet 3). Prodavnica sa 9 tabela: kupci, porudžbine, stavke, proizvodi, dobavljači, zaposleni sa fotografijama…, ukupno 4032 reda.
-- `DateTestDatabase.mdb` (Access 2000) i `ASampleDatabase.accdb` (Access 2007+): manji fajlovi za probu drugih formata.
+- **`nwind.mdb`**: Microsoft's Northwind in **Access 97** format (Jet 3). A shop with 9 tables (customers, orders, order lines, products, suppliers, employees with photos…), 4,032 rows in total.
+- `DateTestDatabase.mdb` (Access 2000) and `ASampleDatabase.accdb` (Access 2007+): smaller files for trying other formats.
 
-### Drajver: zašto 32-bitni Python
+### The driver: why 32-bit Python
 
-Access se čita preko Microsoft-ovog ODBC drajvera, a on nije isti na svakom računaru:
+Access is read through Microsoft's ODBC driver, and it is not the same on every PC:
 
-| Drajver | Čita | Napomena |
+| Driver | Reads | Note |
 | --- | --- | --- |
-| „Microsoft Access Driver (*.mdb)“, 32-bit (Jet) | Access 97 i 2000–2003 `.mdb` | deo Windows-a, ništa se ne instalira; radi samo iz **32-bitnog** Python-a |
-| „Microsoft Access Driver (*.mdb, *.accdb)“, 64-bit (ACE) | `.mdb` od Access 2000 i `.accdb` | **ne** čita Access 97; ako je deo Office-a (Microsoft 365), spoljni programi dobijaju „The operating system is not presently configured to run this application“ |
+| "Microsoft Access Driver (*.mdb)", 32-bit (Jet) | Access 97 and 2000–2003 `.mdb` | part of Windows, nothing to install; works only from **32-bit** Python |
+| "Microsoft Access Driver (*.mdb, *.accdb)", 64-bit (ACE) | `.mdb` from Access 2000 on, and `.accdb` | does **not** read Access 97; when it comes with Office (Microsoft 365), outside programs get "The operating system is not presently configured to run this application" |
 
-Zato za `.mdb` koristimo 32-bitni Python sa Jet drajverom, instaliran pored običnog (npr. `D:\Python314-32`):
+So for `.mdb` files the tools use 32-bit Python with the Jet driver, installed next to the normal one (e.g. `D:\Python314-32`):
 
 ```
 D:\Python314-32\python.exe -m pip install pyodbc PyMySQL
 ```
 
-### Pokretanje
+### Running
 
 ```
 D:\Python314-32\python.exe access_u_mysql.py podaci\access\nwind.mdb --pregled
@@ -118,41 +123,57 @@ D:\Python314-32\python.exe access_u_mysql.py podaci\access\nwind.mdb
 D:\Python314-32\python.exe provera_access.py podaci\access\nwind.mdb
 ```
 
-Svaka Access baza dobija svoju MySQL bazu istog imena (`nwind.mdb` → baza `nwind`), a sa `--baza` može drugačije. Samo neke tabele: `--tabele "Orders,Order Details"`.
+Each Access database gets its own MySQL database of the same name (`nwind.mdb` → database `nwind`); `--baza` picks another name. Only some tables: `--tabele "Orders,Order Details"`.
 
-### Šta se prenosi, a šta ne
+### What moves and what does not
 
 | Access | MySQL |
 | --- | --- |
-| Text | `VARCHAR(dužina)` |
+| Text | `VARCHAR(length)` |
 | Memo / Long Text | `LONGTEXT` |
 | Number (Byte / Integer / Long) | `TINYINT UNSIGNED` / `SMALLINT` / `INT` |
 | Number (Single / Double) | `DOUBLE` |
 | Currency | `DECIMAL(19,4)` |
-| Date/Time | `DATETIME` (datum pre 1000. godine → `NULL` + PROBLEM) |
+| Date/Time | `DATETIME` (a date before year 1000 → `NULL` + PROBLEM) |
 | Yes/No | `TINYINT(1)` |
-| OLE Object (slike) | `LONGBLOB` |
-| primarni ključ | ostaje primarni ključ; dodaje se `_red` (redosled) |
+| OLE Object (pictures) | `LONGBLOB` |
+| primary key | stays the primary key; `_red` (row order) is added |
 
-**Ne prenosi se:** upiti (queries), forme, izveštaji i VBA moduli. To je logika aplikacije, ne podaci, i ona se piše iznova u novoj aplikaciji. **Veze između tabela** (Relationships) drajver ne daje. Za klijenta se prepisuju ručno iz Access-a (Database Tools → Relationships) i dodaju kao strani ključevi tek kad se proveri da podaci zaista poštuju te veze.
+**Not moved:** queries, forms, reports and VBA modules. They are application logic, not data, and get rewritten in the new application. The driver does not report **table relationships** either. For a client they are copied by hand from Access (Database Tools → Relationships) and added as foreign keys only after checking that the data really follows them.
 
-Imena tabela i kolona ostaju ista kao u Access-u, i sa razmacima (`` `Order Details` ``). Preimenovanje dolazi kasnije, kad se pravi nova aplikacija.
+Table and column names stay as they are in Access, spaces included (`` `Order Details` ``). Renaming comes later, when the new application is built.
 
-### Šta naučiti iz ovoga
+### What this teaches
 
-- **Access 97 je i dalje tu.** Novi Microsoft-ov drajver ga ne otvara, a stari 32-bitni Jet iz Windows-a ga otvara. Kod klijenta se prvo proverava verzija fajla.
-- **Single broj nije „okrugao“.** Popust 0,05 u Access-u (tip Single) je zapravo 0,0500000007…, i tako se i prenosi, jer `DOUBLE` čuva tačno istu vrednost. Ako treba „lepih“ 0,05, to je odluka o podacima, a ne posao uvoza.
-- **Provera hvata i slike.** Fotografije zaposlenih se porede preko SHA-256 sadržaja, pa i jedan promenjen bajt daje `RAZL`.
-- **Dva nezavisna čitača.** Isti `nwind.mdb` pročitan je i Microsoft-ovim drajverom (Windows) i besplatnim mdbtools (Linux). Na 7 od 9 tabela kontrolne sume su iste, i sa slikama. Na `Order Details` poređenje je uhvatilo grešku u mdbtools-u: brojeve tipa Single čita pogrešno (popust 0,05 postaje broj blizu nule). Tabelu `Umsätze` mdbtools ne otvara zbog slova „ä“ u imenu. Zato se kod klijenta ne veruje jednom alatu: ono što je važno proveri se na dva načina.
+- **Access 97 is still around.** Microsoft's new driver cannot open it; the old 32-bit Jet driver in Windows can. With a client, check the file version first.
+- **A Single is not "round".** A 0.05 discount in Access (type Single) is really 0.0500000007…, and that is what moves, because `DOUBLE` keeps exactly the same value. If the client wants a "clean" 0.05, that is a data decision, not the import's job.
+- **The checker covers pictures too.** Employee photos are compared by the SHA-256 of their content, so a single changed byte gives `RAZL`.
+- **Two independent readers.** The same `nwind.mdb` was read with Microsoft's driver (Windows) and with the free mdbtools (Linux). On 7 of the 9 tables the checksums match, photos included. On `Order Details` the comparison caught a bug in mdbtools: it misreads Single numbers (a 0.05 discount comes out close to zero). mdbtools cannot open the `Umsätze` table at all, because of the "ä" in its name. So with a client, no single tool is trusted: what matters is checked two ways.
 
-## Odakle su podaci za vežbu
+## Where the sample data comes from
 
-- `podaci/test.dbf`: iz javnog repozitorijuma [harbour/core](https://github.com/harbour/core) (`tests/test.dbf`).
-- `podaci/access/*`: iz javnog repozitorijuma [mdbtools/mdbtestdata](https://github.com/mdbtools/mdbtestdata). Northwind je Microsoft-ova primer baza.
-- `podaci/magacin.dbf` i `.dbt`: izmišljeni, pravi ih `napravi_test_dbf.py`.
+- `podaci/test.dbf`: from the public [harbour/core](https://github.com/harbour/core) repository (`tests/test.dbf`).
+- `podaci/access/*`: from the public [mdbtools/mdbtestdata](https://github.com/mdbtools/mdbtestdata) repository. Northwind is a Microsoft sample database.
+- `podaci/magacin.dbf` and `.dbt`: invented, built by `napravi_test_dbf.py`.
 
-Svi podaci su test podaci, bez stvarnih osoba i firmi.
+All of it is test data, with no real people or companies.
 
-## Zahtevi
+## Requirements
 
-Python 3.10+ i MySQL/MariaDB (XAMPP je dovoljan). Biblioteke su u `requirements.txt` (za Access: 32-bitni Python sa `pyodbc` i `PyMySQL`).
+Python 3.10+ and MySQL/MariaDB (XAMPP is enough). The libraries are in `requirements.txt` (for Access: 32-bit Python with `pyodbc` and `PyMySQL`).
+
+## Serbian words in the tools
+
+| In the tools | Meaning |
+| --- | --- |
+| `--pregled` | preview only, MySQL is not touched |
+| `--kodna-strana cp852` | code page of the `.dbf` file |
+| `--prepisi` | overwrite: delete the existing tables and import again |
+| `--tabela` / `--tabele` | table name / list of tables |
+| `--baza` | MySQL database name |
+| `--korisnik`, `--lozinka` | MySQL user, password |
+| `podaci` | sample data folder |
+| `_red`, `_obrisan` | row number, deleted flag |
+| `OK` / `RAZL` | match / difference |
+| `PROBLEM` | value that could not be read and became `NULL` |
+| `SVE SE POKLAPA` | everything matches |
